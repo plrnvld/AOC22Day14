@@ -1,16 +1,22 @@
 import java.io.*
 
-class Calculator { 
-    fun readFileAsLines(fileName: String): List<String>
-       = File(fileName).bufferedReader().readLines()
-    /*...*/ 
+data class Point(val x: Int, val y: Int) {
+    companion object {
+        fun fromLine(line: String): List<Point> =
+            line.split(" -> ").map { it.split(",").let {
+                Point(it[0].toInt(), it[1].toInt())
+            }
+        }
+    }
 }
 
-fun main(@Suppress("UNUSED_PARAMETER") args: Array<String>) {
-  println("Hello world!")
-
-  val lines = Calculator().readFileAsLines("Example.txt")
-  lines.forEach{it -> println("$it")};      
- 
+class RockReader {
+    fun readFileAsLines(fileName: String): List<String> =
+            File(fileName).bufferedReader().readLines()
+    
 }
 
+fun main() {
+    val lines = RockReader().readFileAsLines("Example.txt")
+    lines.forEach { println(Point.fromLine(it)) }
+}
