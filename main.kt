@@ -5,23 +5,16 @@ enum class Material {
     Air,
     Rock,
     Sand,
-    Source,
-    Nothingness
+    Source
 }
 
 data class Point(val x: Int, val y: Int) {
-    val nextMoves: List<Point> 
-        get() = listOf(Point(x, y+1), Point(x-1, y+1), Point(x+1, y+1))
-    
+    val nextMoves: List<Point>
+        get() = listOf(Point(x, y + 1), Point(x - 1, y + 1), Point(x + 1, y + 1))
 
-    val inTheVoid: Boolean
-        get() = x == theVoid.x && y == theVoid.y
-    
     companion object {
         fun fromLine(line: String): List<Point> =
                 line.split(" -> ").map { it.split(",").let { Point(it[0].toInt(), it[1].toInt()) } }
-
-        val theVoid = Point(-1, -1)
     }
 }
 
@@ -31,6 +24,7 @@ class RockMap {
     var maxY = sourcePos.y
     var minX = sourcePos.x
     var maxX = sourcePos.x
+    var maxYSaved = false
 
     init {
         addMaterial(sourcePos.x, sourcePos.y, Material.Source)
@@ -42,28 +36,36 @@ class RockMap {
         }
     }
 
+    fun saveMaxY() {
+        maxYSaved = true
+    }
+
     fun addRockLine(start: Point, end: Point) {
         if (start.x != end.x && start.y != end.y)
-                throw Exception("Invalid rockline with $start and $end")
+            throw Exception("Invalid rockline with $start and $end")
 
         if (start.x == end.x) {
-            for (y in min(start.y, end.y)..max(start.y, end.y)) addRock(start.x, y)
+            for (y in min(start.y, end.y)..max(start.y, end.y)) 
+            addRock(start.x, y)
         } else {
-            for (x in min(start.x, end.x)..max(start.x, end.x)) addRock(x, start.y)
+            for (x in min(start.x, end.x)..max(start.x, end.x)) 
+            addRock(x, start.y)
         }
     }
 
-    fun addMaterial(x: Int, y: Int, material: Material) {
-        maxY = max(maxY, y)
+    fun addMaterial(x: Int, y: Int, material: Material) {        
+        if (!maxYSaved)
+            maxY = max(maxY, y)
+            
         minX = min(minX, x)
         maxX = max(maxX, x)
 
         rockHashMap.put(toIndex(x, y), material)
     }
 
-    fun addSand(): Boolean { 
+    fun addSand(): Boolean {
         val restPosition = getRestPosition(sourcePos)
-        
+
         if (restPosition != null) {
             addMaterial(restPosition.x, restPosition.y, Material.Sand)
             return false
@@ -75,12 +77,10 @@ class RockMap {
     fun getRestPosition(curr: Point): Point? {
         for (next in curr.nextMoves) {
             val nextMaterial = getMaterial(next.x, next.y)
-            if (nextMaterial == Material.Nothingness) 
-                return null
-
-            if (nextMaterial == Material.Air)
-                return getRestPosition(next)            
+            if (nextMaterial == Material.Air) return getRestPosition(next)
         }
+
+        if (curr == sourcePos) return null
 
         return curr
     }
@@ -88,7 +88,7 @@ class RockMap {
     fun addRock(x: Int, y: Int) = addMaterial(x, y, Material.Rock)
 
     fun getMaterial(x: Int, y: Int): Material {
-        if (y > maxY) return Material.Nothingness
+        if (y == maxY + 2) return Material.Rock
 
         return rockHashMap.get(toIndex(x, y)) ?: Material.Air
     }
@@ -96,7 +96,7 @@ class RockMap {
     fun toIndex(x: Int, y: Int): Int = 1000 * x + y
 
     val size:
-            Int // property type is optional since it can be inferred from the getter's return type
+            Int
         get() = rockHashMap.size
 
     fun print(fromX: Int, toX: Int, toY: Int) {
@@ -109,7 +109,6 @@ class RockMap {
                             Material.Sand -> 'o'
                             Material.Rock -> '#'
                             Material.Source -> '+'
-                            Material.Nothingness -> 'N'
                         }
 
                 print(c)
@@ -127,26 +126,27 @@ class RockReader {
 
 fun main() {
     val lines = RockReader().readFileAsLines("Input.txt")
-    lines.forEach { println(Point.fromLine(it)) }
-
+    
     val rockMap = RockMap()
 
     lines.forEach { rockMap.addRockLines(Point.fromLine(it)) }
 
-    println("${rockMap.size}")
+    rockMap.saveMaxY()
 
-    var isFinished = false
+    println("${rockMap.size}")
+    println("Max y = ${rockMap.maxY}")
+    
+    var isFinished = false 
     var i = 0
     while (!isFinished) {
         isFinished = rockMap.addSand()
 
-        if (!isFinished) {
-            i++
-            println(i)
-        }
+        i++
     }
-
-    println("Finished at $i")
     
-    // rockMap.print(rockMap.minX, rockMap.maxX, rockMap.maxY)
+    println("Finished at $i")  
+    
+    println("Min: ${rockMap.minX}, max: ${rockMap.maxX}")
+    
+    rockMap.print(rockMap.minX, rockMap.maxX, rockMap.maxY + 3)
 }
